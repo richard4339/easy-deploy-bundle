@@ -37,6 +37,7 @@ class CommandExists extends AbstractRequirement
 
     private function isWindows(): bool
     {
+        return false;
         return '\\' === DIRECTORY_SEPARATOR;
     }
 }
