@@ -31,17 +31,17 @@ class TaskRunner
     /**
      * @return TaskCompleted[]
      */
-    public function run(Task $task): array
+    public function run(Task $task, array $envVars = null): array
     {
         $results = [];
         foreach ($task->getServers() as $server) {
-            $results[] = $this->doRun($server, $server->resolveProperties($task->getShellCommand()), $task->getEnvVars());
+            $results[] = $this->doRun($server, $server->resolveProperties($task->getShellCommand()), $task->getEnvVars(), $envVars);
         }
 
         return $results;
     }
 
-    private function doRun(Server $server, string $shellCommand, array $envVars): TaskCompleted
+    private function doRun(Server $server, string $shellCommand, array $envVars, array $extraEnvVars = null): TaskCompleted
     {
         if ($server->has(Property::project_dir)) {
             $shellCommand = sprintf('cd %s && %s', $server->get(Property::project_dir), $shellCommand);
@@ -51,6 +51,12 @@ class TaskRunner
         // that can't be fully solved with inheritEnvironmentVariables()
         if (!empty($envVars)) {
             $envVarsAsString = http_build_query($envVars, '', ' ');
+            if(!empty($extraEnvVars) && is_array($extraEnvVars)) {
+                foreach ($extraEnvVars as $index => $value) {
+                    $envVarsAsString .= ' ' . $index . '=' . $value;
+                }
+            }
+
             // the ';' after the env vars makes them available to all commands, not only the first one
             // parenthesis create a sub-shell so the env vars don't affect to the parent shell
             $shellCommand = sprintf('(export %s; %s)', $envVarsAsString, $shellCommand);

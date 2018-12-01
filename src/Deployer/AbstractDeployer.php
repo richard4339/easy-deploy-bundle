@@ -172,7 +172,7 @@ abstract class AbstractDeployer
     /**
      * @return TaskCompleted[]
      */
-    final protected function runRemote(string $command, array $roles = [Server::ROLE_APP]): array
+    final protected function runRemote(string $command, array $roles = [Server::ROLE_APP], array $envVars = null): array
     {
         $task = new Task($this->getServers()->findByRoles($roles), $command, $this->getCommandEnvVars());
 
