@@ -24,6 +24,10 @@ use EasyCorp\Bundle\EasyDeployBundle\Task\Task;
 use EasyCorp\Bundle\EasyDeployBundle\Task\TaskCompleted;
 use EasyCorp\Bundle\EasyDeployBundle\Task\TaskRunner;
 
+/**
+ * Class AbstractDeployer
+ * @package EasyCorp\Bundle\EasyDeployBundle\Deployer
+ */
 abstract class AbstractDeployer
 {
     /** @var Context */
@@ -35,19 +39,38 @@ abstract class AbstractDeployer
     /** @var ConfigurationAdapter */
     private $config;
 
+    /**
+     * @return array
+     */
     abstract public function getRequirements(): array;
 
+    /**
+     * @return mixed
+     */
     abstract public function deploy();
 
+    /**
+     * @return mixed
+     */
     abstract public function cancelDeploy();
 
+    /**
+     * @return mixed
+     */
     abstract public function rollback();
 
+    /**
+     * @param string $name
+     * @return mixed
+     */
     final public function getConfig(string $name)
     {
         return $this->config->get($name);
     }
 
+    /**
+     * @throws \Exception
+     */
     final public function doDeploy(): void
     {
         try {
@@ -62,7 +85,8 @@ abstract class AbstractDeployer
             $this->log('<h1>Finishing the deployment</>');
         } catch (\Exception $e) {
             $this->log('<error>[ERROR] Cancelling the deployment and reverting the changes</>');
-            $this->log(sprintf('<error>A log file with all the error details has been generated in %s</>', $this->context->getLogFilePath()));
+            $this->log(sprintf('<error>A log file with all the error details has been generated in %s</>',
+                $this->context->getLogFilePath()));
 
             $this->log('Executing <hook>beforeCancelingDeploy</> hook');
             $this->beforeCancelingDeploy();
@@ -74,6 +98,9 @@ abstract class AbstractDeployer
         $this->log(sprintf('<success>[OK] Deployment was successful</>'));
     }
 
+    /**
+     * @throws \Exception
+     */
     final public function doRollback(): void
     {
         try {
@@ -88,7 +115,8 @@ abstract class AbstractDeployer
             $this->log('<h1>Finishing the rollback</>');
         } catch (\Exception $e) {
             $this->log('<error>[ERROR] The roll back failed because of the following error</>');
-            $this->log(sprintf('<error>A log file with all the error details has been generated in %s</>', $this->context->getLogFilePath()));
+            $this->log(sprintf('<error>A log file with all the error details has been generated in %s</>',
+                $this->context->getLogFilePath()));
 
             $this->log('Executing <hook>beforeCancelingRollback</> hook');
             $this->beforeCancelingRollback();
@@ -99,36 +127,57 @@ abstract class AbstractDeployer
         $this->log(sprintf('<success>[OK] Rollback was successful</>'));
     }
 
+    /**
+     *
+     */
     public function beforeStartingDeploy()
     {
         $this->log('<h3>Nothing to execute</>');
     }
 
+    /**
+     *
+     */
     public function beforeCancelingDeploy()
     {
         $this->log('<h3>Nothing to execute</>');
     }
 
+    /**
+     *
+     */
     public function beforeFinishingDeploy()
     {
         $this->log('<h3>Nothing to execute</>');
     }
 
+    /**
+     *
+     */
     public function beforeStartingRollback()
     {
         $this->log('<h3>Nothing to execute</>');
     }
 
+    /**
+     *
+     */
     public function beforeCancelingRollback()
     {
         $this->log('<h3>Nothing to execute</>');
     }
 
+    /**
+     *
+     */
     public function beforeFinishingRollback()
     {
         $this->log('<h3>Nothing to execute</>');
     }
 
+    /**
+     * @param Context $context
+     */
     public function initialize(Context $context): void
     {
         $this->context = $context;
@@ -143,25 +192,44 @@ abstract class AbstractDeployer
         $this->checkRequirements();
     }
 
+    /**
+     * @return mixed
+     */
     abstract protected function getConfigBuilder();
 
+    /**
+     * @return mixed
+     */
     abstract protected function configure();
 
+    /**
+     * @return Context
+     */
     final protected function getContext(): Context
     {
         return $this->context;
     }
 
+    /**
+     * @return ServerRepository
+     */
     final protected function getServers(): ServerRepository
     {
         return $this->config->get('servers');
     }
 
+    /**
+     * @param string $message
+     */
     final protected function log(string $message): void
     {
         $this->logger->log($message);
     }
 
+    /**
+     * @param string $command
+     * @return TaskCompleted
+     */
     final protected function runLocal(string $command): TaskCompleted
     {
         $task = new Task([$this->getContext()->getLocalHost()], $command, $this->getCommandEnvVars());
@@ -176,9 +244,14 @@ abstract class AbstractDeployer
     {
         $task = new Task($this->getServers()->findByRoles($roles), $command, $this->getCommandEnvVars());
 
-        return $this->taskRunner->run($task);
+        return $this->taskRunner->run($task, $envVars);
     }
 
+    /**
+     * @param string $command
+     * @param Server $server
+     * @return TaskCompleted
+     */
     final protected function runOnServer(string $command, Server $server): TaskCompleted
     {
         $task = new Task([$server], $command, $this->getCommandEnvVars());
@@ -186,9 +259,14 @@ abstract class AbstractDeployer
         return $this->taskRunner->run($task)[0];
     }
 
-    // this method checks that any file or directory that goes into "rm -rf" command is
-    // relative to the project dir. This safeguard will prevent catastrophic errors
-    // related to removing the wrong file or directory on the server.
+    /**
+     * this method checks that any file or directory that goes into "rm -rf" command is
+     * relative to the project dir. This safeguard will prevent catastrophic errors
+     * related to removing the wrong file or directory on the server.
+     *
+     * @param Server $server
+     * @param array $absolutePaths
+     */
     final protected function safeDelete(Server $server, array $absolutePaths): void
     {
         $deployDir = $server->get(Property::deploy_dir);
@@ -197,7 +275,8 @@ abstract class AbstractDeployer
             if (Str::startsWith($path, $deployDir)) {
                 $pathsToDelete[] = $path;
             } else {
-                $this->log(sprintf('Skipping the unsafe deletion of "%s" because it\'s not relative to the project directory.', $path));
+                $this->log(sprintf('Skipping the unsafe deletion of "%s" because it\'s not relative to the project directory.',
+                    $path));
             }
         }
 
@@ -208,7 +287,10 @@ abstract class AbstractDeployer
         $this->runOnServer(sprintf('rm -rf %s', implode(' ', $pathsToDelete)), $server);
     }
 
-    private function getCommandEnvVars(): array
+    /**
+     * @return array
+     */
+    protected function getCommandEnvVars(): array
     {
         $symfonyEnvironment = $this->getConfig(Option::symfonyEnvironment);
         $symfonyEnvironmentEnvVarName = $this->getConfig('_symfonyEnvironmentEnvVarName');
@@ -217,6 +299,9 @@ abstract class AbstractDeployer
         return $envVars;
     }
 
+    /**
+     *
+     */
     private function checkRequirements(): void
     {
         /** @var AbstractRequirement[] $requirements */
